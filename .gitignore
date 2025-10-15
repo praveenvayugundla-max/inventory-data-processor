@@ -1,0 +1,20 @@
+# Python cache and build files
+__pycache__/
+*.py[cod]
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+.env/
+.venv/
+
+# Logs and reports
+*.log
+low_stock_report.txt
+errors.log
+
+# VS Code settings
+.vscode/
