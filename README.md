@@ -6,7 +6,7 @@ Small command-line utility for Week 1 project: validates inventory CSV rows usin
 - Reads `inventory.csv` (columns: `product_id,product_name,quantity,price`)
 - Validates rows with Pydantic (`quantity >= 0`, `price > 0`)
 - Logs invalid rows/errors to `errors.log`
-- Produces `low_stock_report.txt` for products with `quantity < threshold`
+- Produces `low_stock_report.txt` for products with `quantity < threshold`  
 - Docstrings, type hints, and SRP-based functions
 - Example CSV and usage instructions included
 
@@ -18,3 +18,4 @@ python -m venv .venv
 source .venv/bin/activate        # macOS / Linux
 .venv\Scripts\activate           # Windows
 pip install -r requirements.txt
+
