@@ -8,6 +8,8 @@ logs any invalid rows, and generates a low stock report.
 import csv
 from datetime import datetime
 from pydantic import BaseModel, ValidationError, conint, confloat
+from pydantic import BaseModel, Field, ValidationError
+
 
 # File paths
 INVENTORY_FILE = "inventory.csv"
@@ -20,9 +22,16 @@ LOW_STOCK_THRESHOLD = 10
 
 class Product(BaseModel):
     """Pydantic model for validating product data."""
-    item_name: str
-    quantity: conint(ge=0)
-    price: confloat(gt=0)
+    item_name: str = Field(..., alias="Item Name")
+    quantity: conint(ge=0) = Field(..., alias="Quantity")
+    price: confloat(gt=0) = Field(..., alias="Price")
+
+
+class InventoryItem(BaseModel):
+    Item_Name: str = Field(..., alias="Item Name")
+    Quantity: int = Field(..., ge=0)
+    Price: float = Field(..., gt=0)  # must be positive
+
 
 
 def log_error(message: str) -> None:
@@ -31,33 +40,26 @@ def log_error(message: str) -> None:
         f.write(f"{datetime.now()} : ERROR: {message}\n")
 
 
-def read_inventory() -> list[dict[str, str]]:
-    """
-    Read inventory from CSV and validate each record with Pydantic.
 
-    Returns:
-        A list of valid inventory items as dictionaries.
-    """
+def read_inventory():
+    """Read the inventory from CSV and return a list of valid items."""
     items = []
     try:
         with open(INVENTORY_FILE, mode="r") as file:
             reader = csv.DictReader(file)
             for row in reader:
                 try:
-                    # Validate each row
-                    Product(
-                        item_name=row["Item Name"],
-                        quantity=int(row["Quantity"]),
-                        price=float(row["Price"])
-                    )
-                    items.append(row)
-                except (ValueError, ValidationError) as e:
-                    log_error(f"Invalid row {row}: {e}")
+                    # Validate each row using Pydantic
+                    item = Product(**row).model_dump(by_alias=True)
+                    items.append(item)
+                except ValidationError as e:
+                    log_error(f"Validation error for row {row}: {e}")
     except FileNotFoundError:
         log_error("Inventory file not found.")
     except Exception as e:
         log_error(str(e))
     return items
+
 
 
 def generate_low_stock_report(items: list[dict[str, str]]) -> None:
