@@ -1,5 +1,0 @@
-Low Stock Report
-=================
-
-Item: Bananas | Quantity: 8
-Item: Mangoes | Quantity: 5
