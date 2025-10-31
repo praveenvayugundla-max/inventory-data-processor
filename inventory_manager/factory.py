@@ -1,35 +1,24 @@
-from __future__ import annotations
-from typing import Dict, Any
-from .product import Product, FoodProduct, ElectronicProduct, ProductSchema
-from pydantic import ValidationError
-
+from inventory_manager.product import Product, FoodProduct, ElectronicProduct
 
 class ProductFactory:
+    """Factory to create Product objects based on raw data."""
+
     @staticmethod
-    def create(data: Dict[str, Any]) -> Product:
-        """
-        Creates a Product (or subclass) based on the 'type' field.
-        data: one row of CSV data as a dictionary.
-        """
-        ptype = (data.get("type") or data.get("Type") or "").strip().lower()
+    def create(row: dict) -> Product:
+        name = row.get("Item Name", "").strip()
+        quantity = int(row.get("Quantity", 0))
+        price = float(row.get("Price", 0))
+        category = row.get("Category", "").strip().lower()
 
-        # Validate using Pydantic schema first
-        validated = ProductSchema(**data)
+        # 🥖 Food Product
+        if category == "food" or "Expiry Date" in row:
+            expiry = row.get("Expiry Date")
+            return FoodProduct(None, name, quantity, price, expiry_date=expiry)
 
-        kwargs = {
-            "product_id": getattr(validated, "product_id", None),
-            "name": validated.item_name,
-            "quantity": validated.quantity,
-            "price": validated.price,
-        }
+        # ⚡ Electronic Product
+        elif category == "electronics" or "Warranty" in row:
+            warranty = row.get("Warranty") or row.get("Warranty (months)")
+            return ElectronicProduct(None, name, quantity, price, warranty_months=int(warranty))
 
-        if ptype in ("food", "grocery"):
-            kwargs["expiry_date"] = data.get("expiry_date")
-            return FoodProduct(**kwargs)
-        elif ptype in ("electronic", "electronics"):
-            kwargs["warranty_months"] = (
-                int(data.get("warranty_months")) if data.get("warranty_months") else None
-            )
-            return ElectronicProduct(**kwargs)
-        else:
-            return Product(**kwargs)
+        # 📦 Default Product
+        return Product(None, name, quantity, price)
