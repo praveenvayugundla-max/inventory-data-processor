@@ -65,6 +65,59 @@ inventory-data-processor/
 └── README.md
 ```
 
+## Week 3 — Automated Testing & Code Coverage
+Objective
+
+Add a comprehensive automated test suite for the entire package using Pytest and Test-Driven Development (TDD).
+
+ ## Product Tests — Validations, setters, and computed values
+
+ ## Inventory Tests — CSV loading, updates, low-stock logic
+
+ ## Factory Tests — Correct subclass creation for product types
+
+ ## Report Tests — Mocked file writes for safe testing
+
+ ## Coverage Report — Achieved >93% coverage
+
+
+
+
+ ## Test Structure
+
+ tests/
+├── conftest.py
+├── test_product.py
+├── test_inventory_io.py
+├── test_inventory_update.py
+├── test_inventory_value.py
+└── test_factory.py
+## Coverage Command
+pytest --cov=inventory_manager --cov-report=term-missing -v
+
+Example Output:
+15 passed, 0 failed, 2 warnings
+TOTAL COVERAGE: 93%
+
+
+## Requirements
+
+Python 3.10+
+
+pydantic
+
+python-dotenv
+
+pytest, pytest-cov, pytest-mock
+
+
+
+
+
+
+
+
+
 ### ⚙️ Setup Instructions
 
 #### 1️⃣ Create & Activate Virtual Environment

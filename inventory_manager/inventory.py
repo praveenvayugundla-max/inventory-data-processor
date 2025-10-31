@@ -56,13 +56,24 @@ class Inventory:
 
     def update_stock(self, product_id: str, new_quantity: int) -> bool:
         """Update the stock for a given product."""
+        if new_quantity < 0:
+            raise ValueError("Quantity cannot be negative")
+
         p = self.find_product(product_id)
         if not p:
-            return False
+          return False
+
         p.quantity = new_quantity
         return True
+
 
     def get_low_stock(self, threshold: int | None = None) -> List[Product]:
         """Return a list of low-stock products."""
         t = threshold if threshold is not None else cfg.low_stock_threshold
         return [p for p in self.products if p.quantity < t]
+    
+
+    def get_inventory_value(self) -> float:
+        """Return the total value of all products in inventory."""
+        return sum(p.quantity * p.get_price() for p in self.products)
+
