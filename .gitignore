@@ -1,10 +1,4 @@
-# Python cache and build files
-__pycache__/
-*.py[cod]
-*.egg
-*.egg-info/
-dist/
-build/
+
 
 # Virtual environments
 venv/
