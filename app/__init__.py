@@ -14,10 +14,13 @@ def create_app():
     )
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+    # JWT Secret Key
+    app.config["SECRET_KEY"] = "myjwtsecret123"   
+
     db.init_app(app)
     migrate.init_app(app, db)
 
-    # Import blueprints
+    # Register blueprint from routes.py
     from .routes import main
     app.register_blueprint(main)
 
