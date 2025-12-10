@@ -12,3 +12,14 @@ errors.log
 
 # VS Code settings
 .vscode/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Ignore all pycache in migrations
+migrations/versions/__pycache__/
+
+# Ignore pycache inside inventory_api
+inventory_api/app/__pycache__/
+inventory_api/__pycache__/
