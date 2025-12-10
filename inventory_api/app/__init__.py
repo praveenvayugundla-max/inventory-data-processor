@@ -1,26 +1,35 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_jwt_extended import JWTManager
 
-# create db and migrate objects
-db = SQLAlchemy()
+from .models import db
+from .routes import main
+
+
 migrate = Migrate()
+jwt = JWTManager()
+
 
 def create_app():
     app = Flask(__name__)
 
-    # basic config (you can update DB URL later)
-    app.config['SQLALCHEMY_DATABASE_URI'] = (
+    # App Config
+    
+    app.config["SQLALCHEMY_DATABASE_URI"] = (
         "postgresql+psycopg2://postgres:70722109@localhost:5432/inventory_db"
     )
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    app.config["JWT_SECRET_KEY"] = "super-secret-key"   # Change later for production
 
-    # initialize extensions
+    # Initialize extensions
+    
     db.init_app(app)
     migrate.init_app(app, db)
+    jwt.init_app(app)
 
-    # register blueprints
-    from .routes import main
+    # Register Blueprints
+   
     app.register_blueprint(main)
 
     return app

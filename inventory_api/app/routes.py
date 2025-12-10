@@ -1,6 +1,14 @@
-from flask import Blueprint, jsonify, request
-from .models import db, Product
 import logging
+from flask import Blueprint, jsonify, request
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_jwt_extended import (
+    jwt_required,
+    get_jwt_identity,
+    create_access_token
+)
+from .models import db, Product, User
+
+
 logging.basicConfig(level=logging.INFO)
 
 main = Blueprint('main', __name__)
@@ -12,6 +20,7 @@ def home():
 
 # POST /products - Create a new product
 @main.route('/products', methods=['POST'])
+@jwt_required()
 def add_product():
     data = request.get_json()
 
@@ -37,6 +46,7 @@ def add_product():
 
 # GET /products - Get all products
 @main.route('/products', methods=['GET'])
+@jwt_required()
 def get_products():
     products = Product.query.all()
     product_list = [
@@ -47,6 +57,7 @@ def get_products():
 
 # GET /products/<id> - Get single product
 @main.route('/products/<int:id>', methods=['GET'])
+@jwt_required()
 def get_product_by_id(id):
     product = Product.query.get(id)
     if not product:
@@ -60,6 +71,7 @@ def get_product_by_id(id):
 
 # PUT /products/<id> - Update product details
 @main.route('/products/<int:id>', methods=['PUT'])
+@jwt_required()
 def update_product(id):
     product = Product.query.get(id)
     if not product:
@@ -87,6 +99,7 @@ def update_product(id):
 
 # DELETE /products/<id> - Delete product
 @main.route('/products/<int:id>', methods=['DELETE'])
+@jwt_required()
 def delete_product(id):
     product = Product.query.get(id)
     if not product:
@@ -95,3 +108,60 @@ def delete_product(id):
     db.session.delete(product)
     db.session.commit()
     return jsonify({"message": "Product deleted successfully"}), 200
+
+
+
+# USER REGISTRATION (POST)
+
+@main.route('/register', methods=['POST'])
+def register():
+    data = request.get_json()
+
+    # Validate fields
+    if not data or 'username' not in data or 'email' not in data or 'password' not in data:
+        return jsonify({"error": "username, email, and password are required"}), 400
+
+    # Check if username exists
+    if User.query.filter_by(username=data['username']).first():
+        return jsonify({"error": "Username already exists"}), 400
+
+    # Check if email exists
+    if User.query.filter_by(email=data['email']).first():
+        return jsonify({"error": "Email already exists"}), 400
+
+    # Create new user
+    new_user = User(
+        username=data['username'],
+        email=data['email'],
+        role="staff"   # default role
+    )
+    new_user.set_password(data['password'])   # using model function
+
+    db.session.add(new_user)
+    db.session.commit()
+
+    return jsonify({"message": "User registered successfully"}), 201
+
+
+
+
+
+# POST /login
+
+@main.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+
+    if not data or "username" not in data or "password" not in data:
+        return jsonify({"error": "Missing username or password"}), 400
+
+    user = User.query.filter_by(username=data["username"]).first()
+
+    if not user or not check_password_hash(user.password_hash, data["password"]):
+        return jsonify({"error": "Invalid username or password"}), 401
+
+    # Create JWT token
+    access_token = create_access_token(identity=str(user.id))
+
+    return jsonify({"token": access_token}), 200
+
