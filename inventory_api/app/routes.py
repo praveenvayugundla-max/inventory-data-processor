@@ -1,5 +1,7 @@
 from flask import Blueprint, jsonify, request
 from .models import db, Product
+import logging
+logging.basicConfig(level=logging.INFO)
 
 main = Blueprint('main', __name__)
 
@@ -62,8 +64,11 @@ def update_product(id):
     product = Product.query.get(id)
     if not product:
         return jsonify({"error": "Product not found"}), 404
+    
 
     data = request.get_json()
+    logging.info(f"Received data: {data}")
+
 
     if 'name' in data:
         product.name = data['name']
