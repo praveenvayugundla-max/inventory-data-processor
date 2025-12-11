@@ -131,10 +131,11 @@ def register():
 
     # Create new user
     new_user = User(
-        username=data['username'],
-        email=data['email'],
-        role="staff"   # default role
-    )
+    username=data["username"],
+    email=data["email"],
+    password_hash=hashed
+)
+
     new_user.set_password(data['password'])   # using model function
 
     db.session.add(new_user)
