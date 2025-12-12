@@ -133,7 +133,6 @@ def register():
     new_user = User(
     username=data["username"],
     email=data["email"],
-    password_hash=hashed
 )
 
     new_user.set_password(data['password'])   # using model function
@@ -166,3 +165,64 @@ def login():
 
     return jsonify({"token": access_token}), 200
 
+
+@main.route('/users', methods=['GET'])
+@jwt_required()
+def get_users():
+    users = User.query.all()
+    return jsonify([
+        {
+            "id": u.id,
+            "username": u.username,
+            "email": u.email
+        }
+        for u in users
+    ])
+
+
+@main.route('/users/<int:user_id>', methods=['GET'])
+@jwt_required()
+def get_user(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    return jsonify({
+        "id": user.id,
+        "username": user.username,
+        "email": user.email
+    })
+
+
+@main.route('/users/<int:user_id>', methods=['PUT'])
+@jwt_required()
+def update_user(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    data = request.get_json()
+
+    if "email" in data:
+        user.email = data["email"]
+
+    if "password" in data:
+        user.set_password(data["password"])
+
+    db.session.commit()
+
+    return jsonify({"message": "User updated successfully"})
+
+
+
+@main.route('/users/<int:user_id>', methods=['DELETE'])
+@jwt_required()
+def delete_user(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    db.session.delete(user)
+    db.session.commit()
+
+    return jsonify({"message": "User deleted successfully"})
