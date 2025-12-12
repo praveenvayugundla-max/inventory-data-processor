@@ -4,7 +4,8 @@ from .models import db, Category, Product
 
 category_bp = Blueprint("category", __name__, url_prefix="/categories")
 
- 
+
+
 # CREATE CATEGORY
 
 @category_bp.route("/", methods=["POST"])
@@ -14,13 +15,17 @@ def create_category():
     if not data or "name" not in data:
         return jsonify({"error": "Category name is required"}), 400
 
-    # Check duplicate
     if Category.query.filter_by(name=data["name"]).first():
         return jsonify({"error": "Category already exists"}), 400
 
     new_category = Category(name=data["name"])
-    db.session.add(new_category)
-    db.session.commit()
+
+    try:
+        db.session.add(new_category)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Database error", "details": str(e)}), 500
 
     return jsonify({"message": "Category created", "id": new_category.id}), 201
 
@@ -69,16 +74,21 @@ def update_category(category_id):
         return jsonify({"error": "Category not found"}), 404
 
     data = request.get_json()
+
     if "name" in data:
         category.name = data["name"]
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify({"error": "Failed to update category"}), 500
+
     return jsonify({"message": "Category updated"})
 
 
-# ------------------------------------------
 # DELETE CATEGORY
-# ------------------------------------------
+
 @category_bp.route("/<int:category_id>", methods=["DELETE"])
 @jwt_required()
 def delete_category(category_id):
@@ -86,13 +96,17 @@ def delete_category(category_id):
     if not category:
         return jsonify({"error": "Category not found"}), 404
 
-    db.session.delete(category)
-    db.session.commit()
+    try:
+        db.session.delete(category)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify({"error": "Failed to delete category"}), 500
+
     return jsonify({"message": "Category deleted"})
 
 
-
-# ASSIGN PRODUCT TO CATEGORY
+# ASSIGN PRODUCT → CATEGORY
 
 @category_bp.route("/assign", methods=["POST"])
 @jwt_required()
@@ -100,8 +114,9 @@ def assign_product():
     data = request.get_json()
 
     if "product_id" not in data or "category_id" not in data:
-        return jsonify({"error": "product_id and category_id required"}), 400
+        return jsonify({"error": "product_id and category_id are required"}), 400
 
+    # Single combined DB call approach
     product = Product.query.get(data["product_id"])
     category = Category.query.get(data["category_id"])
 
@@ -111,9 +126,11 @@ def assign_product():
         return jsonify({"error": "Category not found"}), 404
 
     product.category_id = category.id
-    db.session.commit()
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify({"error": "Failed to assign product"}), 500
 
     return jsonify({"message": "Product assigned to category"})
-
-
-
