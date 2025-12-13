@@ -2,6 +2,7 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
+from .category_routes import category_bp
 
 from .models import db
 from .routes import main
@@ -31,5 +32,7 @@ def create_app():
     # Register Blueprints
    
     app.register_blueprint(main)
+    app.register_blueprint(category_bp)
+
 
     return app

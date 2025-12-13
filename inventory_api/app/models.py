@@ -11,6 +11,9 @@ class Product(db.Model):
     price = db.Column(db.Float, nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
 
+    category_id = db.Column(db.Integer, db.ForeignKey('category.id'), nullable=True)
+
+
     def __repr__(self):
         return f"<Product {self.name}>"
 
@@ -33,3 +36,14 @@ class User(db.Model):
 
     def __repr__(self):
         return f"<User {self.username} ({self.role})>"
+
+
+class Category(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), unique=True, nullable=False)
+
+    # Relationship: One category → many products
+    products = db.relationship('Product', backref='category', lazy=True)
+
+    def __repr__(self):
+        return f"<Category {self.name}>"
