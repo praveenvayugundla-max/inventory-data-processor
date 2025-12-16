@@ -7,6 +7,67 @@ from flask_jwt_extended import (
     create_access_token
 )
 from .models import db, Product, User
+from functools import wraps 
+
+def get_current_user():
+    user_id = get_jwt_identity()
+    return User.query.get(user_id)
+
+def require_user():
+    user = get_current_user()
+    if not user:
+        return None, jsonify({"error": "User not found. Please login."}), 401
+    return user, None, None
+
+
+
+def staff_required(fn):
+    @wraps(fn)
+    @jwt_required()
+    def wrapper(*args, **kwargs):
+        user, error_response, status = require_user()
+        if error_response:
+            return error_response, status
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+
+def manager_required(fn):
+    @wraps(fn)
+    @jwt_required()
+    def wrapper(*args, **kwargs):
+        user, error_response, status = require_user()
+        if error_response:
+            return error_response, status
+
+        if user.role not in ("manager", "admin"):
+            return jsonify({
+                "error": "Insufficient permissions. Manager or Admin required."
+            }), 403
+
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+
+def admin_required(fn):
+    @wraps(fn)
+    @jwt_required()
+    def wrapper(*args, **kwargs):
+        user, error_response, status = require_user()
+        if error_response:
+            return error_response, status
+
+        if user.role != "admin":
+            return jsonify({
+                "error": "Admin access required."
+            }), 403
+
+        return fn(*args, **kwargs)
+    return wrapper
+
+
 
 
 logging.basicConfig(level=logging.INFO)
@@ -20,7 +81,7 @@ def home():
 
 # POST /products - Create a new product
 @main.route('/products', methods=['POST'])
-@jwt_required()
+@manager_required
 def add_product():
     data = request.get_json()
 
@@ -46,7 +107,7 @@ def add_product():
 
 # GET /products - Get all products
 @main.route('/products', methods=['GET'])
-@jwt_required()
+@staff_required
 def get_products():
     products = Product.query.all()
     product_list = [
@@ -57,7 +118,7 @@ def get_products():
 
 # GET /products/<id> - Get single product
 @main.route('/products/<int:id>', methods=['GET'])
-@jwt_required()
+@staff_required
 def get_product_by_id(id):
     product = Product.query.get(id)
     if not product:
@@ -71,7 +132,7 @@ def get_product_by_id(id):
 
 # PUT /products/<id> - Update product details
 @main.route('/products/<int:id>', methods=['PUT'])
-@jwt_required()
+@manager_required
 def update_product(id):
     product = Product.query.get(id)
     if not product:
@@ -99,7 +160,7 @@ def update_product(id):
 
 # DELETE /products/<id> - Delete product
 @main.route('/products/<int:id>', methods=['DELETE'])
-@jwt_required()
+@admin_required
 def delete_product(id):
     product = Product.query.get(id)
     if not product:
@@ -167,7 +228,7 @@ def login():
 
 
 @main.route('/users', methods=['GET'])
-@jwt_required()
+@admin_required
 def get_users():
     users = User.query.all()
     return jsonify([
@@ -181,7 +242,7 @@ def get_users():
 
 
 @main.route('/users/<int:user_id>', methods=['GET'])
-@jwt_required()
+@admin_required
 def get_user(user_id):
     user = User.query.get(user_id)
     if not user:
@@ -195,7 +256,7 @@ def get_user(user_id):
 
 
 @main.route('/users/<int:user_id>', methods=['PUT'])
-@jwt_required()
+@admin_required
 def update_user(user_id):
     user = User.query.get(user_id)
     if not user:
@@ -216,7 +277,7 @@ def update_user(user_id):
 
 
 @main.route('/users/<int:user_id>', methods=['DELETE'])
-@jwt_required()
+@admin_required
 def delete_user(user_id):
     user = User.query.get(user_id)
     if not user:
