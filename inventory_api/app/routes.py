@@ -13,38 +13,60 @@ def get_current_user():
     user_id = get_jwt_identity()
     return User.query.get(user_id)
 
+def require_user():
+    user = get_current_user()
+    if not user:
+        return None, jsonify({"error": "User not found. Please login."}), 401
+    return user, None, None
+
+
 
 def staff_required(fn):
     @wraps(fn)
     @jwt_required()
     def wrapper(*args, **kwargs):
-        user = get_current_user()
-        if not user:
-            return jsonify({"error": "Unauthorized"}), 401
+        user, error_response, status = require_user()
+        if error_response:
+            return error_response, status
         return fn(*args, **kwargs)
     return wrapper
+
 
 
 def manager_required(fn):
     @wraps(fn)
     @jwt_required()
     def wrapper(*args, **kwargs):
-        user = get_current_user()
-        if not user or user.role not in ("manager", "admin"):
-            return jsonify({"error": "Manager or Admin access required"}), 403
+        user, error_response, status = require_user()
+        if error_response:
+            return error_response, status
+
+        if user.role not in ("manager", "admin"):
+            return jsonify({
+                "error": "Insufficient permissions. Manager or Admin required."
+            }), 403
+
         return fn(*args, **kwargs)
     return wrapper
+
 
 
 def admin_required(fn):
     @wraps(fn)
     @jwt_required()
     def wrapper(*args, **kwargs):
-        user = get_current_user()
-        if not user or user.role != "admin":
-            return jsonify({"error": "Admin access required"}), 403
+        user, error_response, status = require_user()
+        if error_response:
+            return error_response, status
+
+        if user.role != "admin":
+            return jsonify({
+                "error": "Admin access required."
+            }), 403
+
         return fn(*args, **kwargs)
     return wrapper
+
 
 
 
