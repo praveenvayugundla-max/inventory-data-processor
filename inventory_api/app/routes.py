@@ -32,7 +32,6 @@ def staff_required(fn):
     return wrapper
 
 
-
 def manager_required(fn):
     @wraps(fn)
     @jwt_required()
@@ -48,7 +47,6 @@ def manager_required(fn):
 
         return fn(*args, **kwargs)
     return wrapper
-
 
 
 def admin_required(fn):
