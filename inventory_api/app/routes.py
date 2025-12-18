@@ -89,7 +89,6 @@ def add_product():
 
     if data['price'] <= 0:
         return jsonify({"error": "Price must be greater than 0"}), 400
-
     if not isinstance(data['quantity'], int) or data['quantity'] < 0:
         return jsonify({"error": "Quantity must be a non-negative integer"}), 400
 
@@ -285,3 +284,42 @@ def delete_user(user_id):
     db.session.commit()
 
     return jsonify({"message": "User deleted successfully"})
+
+
+   
+# Global Error Handlers blueprint-level
+
+@main.errorhandler(404)
+def handle_404(error):
+    return jsonify({
+        "error": "Resource not found",
+        "status_code": 404
+    }), 404
+
+
+@main.errorhandler(403)
+def handle_403(error):
+    return jsonify({
+        "error": "Forbidden",
+        "message": "You do not have permission to perform this action",
+        "status_code": 403
+    }), 403
+
+
+@main.errorhandler(401)
+def handle_401(error):
+    return jsonify({
+        "error": "Unauthorized",
+        "message": "Authentication required or token invalid",
+        "status_code": 401
+    }), 401
+
+
+@main.errorhandler(500)
+def handle_500(error):
+    return jsonify({
+        "error": "Internal Server Error",
+        "message": "Something went wrong on the server",
+        "status_code": 500
+    }), 500
+

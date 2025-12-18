@@ -23,3 +23,4 @@ migrations/versions/__pycache__/
 # Ignore pycache inside inventory_api
 inventory_api/app/__pycache__/
 inventory_api/__pycache__/
+.env
