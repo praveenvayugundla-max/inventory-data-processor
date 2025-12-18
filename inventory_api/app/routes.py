@@ -1,5 +1,5 @@
 import logging
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request , abort
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import (
     jwt_required,
@@ -16,18 +16,15 @@ def get_current_user():
 def require_user():
     user = get_current_user()
     if not user:
-        return None, jsonify({"error": "User not found. Please login."}), 401
-    return user, None, None
-
+        abort(401)
+    return user
 
 
 def staff_required(fn):
     @wraps(fn)
     @jwt_required()
     def wrapper(*args, **kwargs):
-        user, error_response, status = require_user()
-        if error_response:
-            return error_response, status
+        require_user()
         return fn(*args, **kwargs)
     return wrapper
 
@@ -36,35 +33,23 @@ def manager_required(fn):
     @wraps(fn)
     @jwt_required()
     def wrapper(*args, **kwargs):
-        user, error_response, status = require_user()
-        if error_response:
-            return error_response, status
-
+        user = require_user()
         if user.role not in ("manager", "admin"):
-            return jsonify({
-                "error": "Insufficient permissions. Manager or Admin required."
-            }), 403
-
+            abort(403)
         return fn(*args, **kwargs)
     return wrapper
+
 
 
 def admin_required(fn):
     @wraps(fn)
     @jwt_required()
     def wrapper(*args, **kwargs):
-        user, error_response, status = require_user()
-        if error_response:
-            return error_response, status
-
+        user = require_user()
         if user.role != "admin":
-            return jsonify({
-                "error": "Admin access required."
-            }), 403
-
+            abort(403)
         return fn(*args, **kwargs)
     return wrapper
-
 
 
 
@@ -133,7 +118,8 @@ def get_product_by_id(id):
 def update_product(id):
     product = Product.query.get(id)
     if not product:
-        return jsonify({"error": "Product not found"}), 404
+      abort(404)
+
     
 
     data = request.get_json()
@@ -161,7 +147,8 @@ def update_product(id):
 def delete_product(id):
     product = Product.query.get(id)
     if not product:
-        return jsonify({"error": "Product not found"}), 404
+        abort(404)
+
 
     db.session.delete(product)
     db.session.commit()
@@ -243,7 +230,7 @@ def get_users():
 def get_user(user_id):
     user = User.query.get(user_id)
     if not user:
-        return jsonify({"error": "User not found"}), 404
+      abort(404)
 
     return jsonify({
         "id": user.id,
@@ -257,7 +244,7 @@ def get_user(user_id):
 def update_user(user_id):
     user = User.query.get(user_id)
     if not user:
-        return jsonify({"error": "User not found"}), 404
+      abort(404)
 
     data = request.get_json()
 
@@ -278,7 +265,7 @@ def update_user(user_id):
 def delete_user(user_id):
     user = User.query.get(user_id)
     if not user:
-        return jsonify({"error": "User not found"}), 404
+        abort(404)
 
     db.session.delete(user)
     db.session.commit()
