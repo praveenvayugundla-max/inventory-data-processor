@@ -1,5 +1,5 @@
 import logging
-from flask import Blueprint, jsonify, request , abort
+from flask import Blueprint, jsonify, request 
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import (
     jwt_required,
@@ -16,15 +16,21 @@ def get_current_user():
 def require_user():
     user = get_current_user()
     if not user:
-        abort(401)
+        return None
     return user
+
 
 
 def staff_required(fn):
     @wraps(fn)
     @jwt_required()
     def wrapper(*args, **kwargs):
-        require_user()
+        user = require_user()
+        if not user:
+            return jsonify({
+                "error": "Unauthorized",
+                "message": "Login required"
+            }), 401
         return fn(*args, **kwargs)
     return wrapper
 
@@ -34,11 +40,20 @@ def manager_required(fn):
     @jwt_required()
     def wrapper(*args, **kwargs):
         user = require_user()
+        if not user:
+            return jsonify({
+                "error": "Unauthorized",
+                "message": "Login required"
+            }), 401
+
         if user.role not in ("manager", "admin"):
-            abort(403)
+            return jsonify({
+                "error": "Forbidden",
+                "message": "Manager or Admin access required"
+            }), 403
+
         return fn(*args, **kwargs)
     return wrapper
-
 
 
 def admin_required(fn):
@@ -46,10 +61,21 @@ def admin_required(fn):
     @jwt_required()
     def wrapper(*args, **kwargs):
         user = require_user()
+        if not user:
+            return jsonify({
+                "error": "Unauthorized",
+                "message": "Login required"
+            }), 401
+
         if user.role != "admin":
-            abort(403)
+            return jsonify({
+                "error": "Forbidden",
+                "message": "Admin access required"
+            }), 403
+
         return fn(*args, **kwargs)
     return wrapper
+
 
 
 
@@ -102,57 +128,102 @@ def get_products():
 @main.route('/products/<int:id>', methods=['GET'])
 @staff_required
 def get_product_by_id(id):
-    product = Product.query.get(id)
-    if not product:
-        return jsonify({"error": "Product not found"}), 404
-    return jsonify({
-        "id": product.id,
-        "name": product.name,
-        "price": product.price,
-        "quantity": product.quantity
-    })
+    try:
+        product = Product.query.get(id)
+        if not product:
+            return jsonify({
+                "error": "Product not found",
+                "message": f"No product exists with id {id}"
+            }), 404
+
+        return jsonify({
+            "id": product.id,
+            "name": product.name,
+            "price": product.price,
+            "quantity": product.quantity
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "error": "Internal Server Error",
+            "message": str(e)
+        }), 500
+
 
 # PUT /products/<id> - Update product details
 @main.route('/products/<int:id>', methods=['PUT'])
 @manager_required
 def update_product(id):
-    product = Product.query.get(id)
-    if not product:
-      abort(404)
+    try:
+        product = Product.query.get(id)
 
-    
+        if not product:
+            return jsonify({
+                "error": "Product not found",
+                "message": f"No product exists with id {id}"
+            }), 404
 
-    data = request.get_json()
-    logging.info(f"Received data: {data}")
+        data = request.get_json()
+        logging.info(f"Received data: {data}")
 
+        if 'name' in data:
+            product.name = data['name']
 
-    if 'name' in data:
-        product.name = data['name']
-    if 'price' in data:
-        if data['price'] <= 0:
-            return jsonify({"error": "Price must be positive"}), 400
-        product.price = data['price']
-    if 'quantity' in data:
-        if not isinstance(data['quantity'], int) or data['quantity'] < 0:
-            return jsonify({"error": "Quantity must be a non-negative integer"}), 400
-        product.quantity = data['quantity']
+        if 'price' in data:
+            if data['price'] <= 0:
+                return jsonify({
+                    "error": "Invalid price",
+                    "message": "Price must be greater than 0"
+                }), 400
+            product.price = data['price']
 
-    db.session.commit()
-    return jsonify({"message": "Product updated successfully"}), 200
+        if 'quantity' in data:
+            if not isinstance(data['quantity'], int) or data['quantity'] < 0:
+                return jsonify({
+                    "error": "Invalid quantity",
+                    "message": "Quantity must be a non-negative integer"
+                }), 400
+            product.quantity = data['quantity']
+
+        db.session.commit()
+
+        return jsonify({
+            "message": "Product updated successfully"
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "error": "Internal Server Error",
+            "message": str(e)
+        }), 500
+
 
 
 # DELETE /products/<id> - Delete product
 @main.route('/products/<int:id>', methods=['DELETE'])
 @admin_required
 def delete_product(id):
-    product = Product.query.get(id)
-    if not product:
-        abort(404)
+    try:
+        product = Product.query.get(id)
+        if not product:
+            return jsonify({
+                "error": "Product not found",
+                "message": f"No product exists with id {id}"
+            }), 404
 
+        db.session.delete(product)
+        db.session.commit()
 
-    db.session.delete(product)
-    db.session.commit()
-    return jsonify({"message": "Product deleted successfully"}), 200
+        return jsonify({
+            "message": "Product deleted successfully"
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "error": "Internal Server Error",
+            "message": str(e)
+        }), 500
+
 
 
 
@@ -228,85 +299,91 @@ def get_users():
 @main.route('/users/<int:user_id>', methods=['GET'])
 @admin_required
 def get_user(user_id):
-    user = User.query.get(user_id)
-    if not user:
-      abort(404)
+    try:
+        user = User.query.get(user_id)
 
-    return jsonify({
-        "id": user.id,
-        "username": user.username,
-        "email": user.email
-    })
+        if not user:
+            return jsonify({
+                "error": "User not found",
+                "message": f"No user exists with id {user_id}"
+            }), 404
+
+        return jsonify({
+            "id": user.id,
+            "username": user.username,
+            "email": user.email
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "error": "Internal Server Error",
+            "message": str(e)
+        }), 500
+
 
 
 @main.route('/users/<int:user_id>', methods=['PUT'])
 @admin_required
 def update_user(user_id):
-    user = User.query.get(user_id)
-    if not user:
-      abort(404)
+    try:
+        user = User.query.get(user_id)
 
-    data = request.get_json()
+        if not user:
+            return jsonify({
+                "error": "User not found",
+                "message": f"No user exists with id {user_id}"
+            }), 404
 
-    if "email" in data:
-        user.email = data["email"]
+        data = request.get_json()
 
-    if "password" in data:
-        user.set_password(data["password"])
+        if "email" in data:
+            user.email = data["email"]
 
-    db.session.commit()
+        if "password" in data:
+            user.set_password(data["password"])
 
-    return jsonify({"message": "User updated successfully"})
+        db.session.commit()
+
+        return jsonify({
+            "message": "User updated successfully"
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "error": "Internal Server Error",
+            "message": str(e)
+        }), 500
+
 
 
 
 @main.route('/users/<int:user_id>', methods=['DELETE'])
 @admin_required
 def delete_user(user_id):
-    user = User.query.get(user_id)
-    if not user:
-        abort(404)
+    try:
+        user = User.query.get(user_id)
 
-    db.session.delete(user)
-    db.session.commit()
+        if not user:
+            return jsonify({
+                "error": "User not found",
+                "message": f"No user exists with id {user_id}"
+            }), 404
 
-    return jsonify({"message": "User deleted successfully"})
+        db.session.delete(user)
+        db.session.commit()
+
+        return jsonify({
+            "message": "User deleted successfully"
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "error": "Internal Server Error",
+            "message": str(e)
+        }), 500
+
 
 
    
-# Global Error Handlers blueprint-level
 
-@main.errorhandler(404)
-def handle_404(error):
-    return jsonify({
-        "error": "Resource not found",
-        "status_code": 404
-    }), 404
-
-
-@main.errorhandler(403)
-def handle_403(error):
-    return jsonify({
-        "error": "Forbidden",
-        "message": "You do not have permission to perform this action",
-        "status_code": 403
-    }), 403
-
-
-@main.errorhandler(401)
-def handle_401(error):
-    return jsonify({
-        "error": "Unauthorized",
-        "message": "Authentication required or token invalid",
-        "status_code": 401
-    }), 401
-
-
-@main.errorhandler(500)
-def handle_500(error):
-    return jsonify({
-        "error": "Internal Server Error",
-        "message": "Something went wrong on the server",
-        "status_code": 500
-    }), 500
 
