@@ -1,13 +1,16 @@
 from abc import ABC, abstractmethod
+from typing import Protocol
+
+
+class Price(Protocol):
+    def get_price(self) -> float:
+        ...
+
 
 class PriceDecorator(ABC):
-    """
-    Abstract Decorator class
-    """
-
-    def __init__(self, price):
+    def __init__(self, price: Price):
         self.price = price
 
     @abstractmethod
-    def get_price(self):
+    def get_price(self) -> float:
         pass

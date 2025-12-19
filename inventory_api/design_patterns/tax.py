@@ -1,4 +1,4 @@
-from .decorators import PriceDecorator
+from .decorators import PriceDecorator, Price
 
 
 class TaxDecorator(PriceDecorator):
@@ -6,7 +6,10 @@ class TaxDecorator(PriceDecorator):
     Applies tax percentage on the base price
     """
 
-    def __init__(self, price, tax_percent: float):
+    def __init__(self, price: Price, tax_percent: float):
+        if tax_percent < 0:
+            raise ValueError("Tax percent cannot be negative")
+
         super().__init__(price)
         self.tax_percent = tax_percent
 

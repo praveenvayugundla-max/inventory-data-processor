@@ -3,7 +3,7 @@ from .discount import DiscountDecorator
 from .tax import TaxDecorator
 
 
-def run_demo():
+def run_demo() -> None:
     base_price = BasePrice(1000)
     print("Base Price:", base_price.get_price())
 
