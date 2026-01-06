@@ -2,38 +2,41 @@ import os
 import psycopg2
 from typing import List
 
+
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")
+
+
+
 def get_db_connection():
     return psycopg2.connect(
-        dbname="inventory_db",
-        user="postgres",
-        password="70722109",   # same as your .env
-        host="localhost",
-        port=5432
+        dbname=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        host=os.getenv("DB_HOST"),
+        port=os.getenv("DB_PORT"),
     )
 
 
 
 def generate_embedding(text: str) -> List[float]:
-    """
-    Generates embedding for given text.
-    Falls back to dummy embedding if API quota fails.
-    """
     try:
         from openai import OpenAI
+
+        model = os.getenv("OPENAI_EMBEDDING_MODEL")
+        if not model:
+            raise RuntimeError("OPENAI_EMBEDDING_MODEL is not set in environment")
 
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
         response = client.embeddings.create(
-            model="text-embedding-3-small",
+            model=model,
             input=text
         )
 
         return response.data[0].embedding
 
     except Exception as e:
-        print(" OpenAI embedding failed, using dummy vector:", e)
-        # Dummy embedding (1536 dimensions)
-        return [0.0] * 1536
+        raise RuntimeError(f"Embedding generation failed: {e}")
 
 
 
