@@ -1,75 +1,58 @@
 import os
-import psycopg2
 from typing import List
+from pathlib import Path
+from dotenv import load_dotenv
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.vectorstores import PGVector
+from langchain_core.documents import Document
 
+# find .env file in project root
+project_root = Path(__file__).parent.parent.parent
+env_file = project_root / '.env'
+load_dotenv(dotenv_path=env_file)
 
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")
+# db config
+DB_NAME = os.getenv("DB_NAME")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT")
 
+CONNECTION_STRING = (
+    f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}"
+    f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
 
-
-def get_db_connection():
-    return psycopg2.connect(
-        dbname=os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT"),
+def get_embedding_function() -> OpenAIEmbeddings:
+    if not os.getenv("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is not set")
+    
+    return OpenAIEmbeddings(
+        model=os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small"),
+        api_key=os.getenv("OPENAI_API_KEY"),
     )
 
-
-
-def generate_embedding(text: str) -> List[float]:
-    try:
-        from openai import OpenAI
-
-        model = os.getenv("OPENAI_EMBEDDING_MODEL")
-        if not model:
-            raise RuntimeError("OPENAI_EMBEDDING_MODEL is not set in environment")
-
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-        response = client.embeddings.create(
-            model=model,
-            input=text
-        )
-
-        return response.data[0].embedding
-
-    except Exception as e:
-        raise RuntimeError(f"Embedding generation failed: {e}")
-
-
-
-
-def store_embedding(content: str, embedding: List[float]):
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    cur.execute(
-        """
-        INSERT INTO text_embeddings (content, embedding)
-        VALUES (%s, %s)
-        """,
-        (content, embedding)
+def get_vector_store() -> PGVector:
+    return PGVector(
+        connection_string=CONNECTION_STRING,
+        embedding_function=get_embedding_function(),
+        collection_name="text_embeddings",
     )
 
-    conn.commit()
-    cur.close()
-    conn.close()
-
-
+def store_texts(texts: List[str]) -> None:
+    vector_store = get_vector_store()
+    docs = [Document(page_content=text) for text in texts]
+    vector_store.add_documents(docs)
 
 def run_demo():
     texts = [
         "Flask is a lightweight web framework",
         "PostgreSQL is a relational database",
-        "Embeddings convert text into vectors"
+        "Embeddings convert text into vectors",
     ]
-
-    for text in texts:
-        embedding = generate_embedding(text)
-        store_embedding(text, embedding)
-        print(f" Stored embedding for: {text}")
+    
+    store_texts(texts)
+    print("Successfully stored embeddings using PGVector")
 
 if __name__ == "__main__":
     run_demo()
